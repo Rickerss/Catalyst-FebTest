@@ -13,8 +13,8 @@
 				fgetcsv($file); //Read in the first line and don't do anything with it.
 			}else{
 				$person = fgetcsv($file); //Read in all details.		
-				$name = ucfirst(trim(strtolower($person[0]))); //Split details up..
-				$surname = ucfirst(trim(strtolower($person[1]))); //ucfirst puts the first letter to uppercase.
+				$name = cleanString($person[0]); //Clean the string.
+				$surname = cleanString($person[1]); //Clean the string.
 				$email = trim(strtolower($person[2])); //trim trims whitespace, strtolower puts the string to lowercase.
 				
 				$emailFlag = filter_var($email, FILTER_VALIDATE_EMAIL); //Use php's function for checking valid emails.
@@ -31,6 +31,12 @@
 			}
 		}
 		fclose($file); //Close the file after we are done.
+	}
+	
+	function cleanString($string){
+		$string = preg_replace('/[^a-zA-Z0-9-\']/', '', $string); //Replace special characters. (Except - and ').
+		$string = ucfirst(trim(strtolower($string))); //Put the string to lower case, then trim white space and put the first letter to upper case.
+		return $string; //Return the cleaned string.
 	}
 	
 	function insertRecord($conn, $name, $surname, $email){
