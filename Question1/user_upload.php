@@ -1,57 +1,63 @@
 <?php
-	
-	function readFromFile($fname){
-		$file = fopen($fname,"r");
-		$firstLine = true;
-		while(! feof($file)){
-			if($firstLine){
+	//This is my fucntion to read from the csv file.
+	function readFromFile($conn, $fname){
+		$file = fopen($fname,"r"); //Open the file.
+		$firstLine = true; //We don't need the first line (it's the headers).
+		while(! feof($file)){ //While we are not at the end of the file...
+			if($firstLine){ 
 				$firstLine = false;
-				fgetcsv($file);
+				fgetcsv($file); //Read in the first line and don't do anything with it.
 			}else{
-				$person = fgetcsv($file);				
-				$name = ucfirst(trim(strtolower($person[0])));
-				$surname = ucfirst(trim(strtolower($person[1])));
-				$email = trim(strtolower($person[2]));
+				$person = fgetcsv($file); //Read in all details.		
+				$name = ucfirst(trim(strtolower($person[0]))); //Split details up..
+				$surname = ucfirst(trim(strtolower($person[1]))); //ucfirst puts the first letter to uppercase.
+				$email = trim(strtolower($person[2])); //trim trims whitespace, strtolower puts the string to lowercase.
 				
-				$emailFlag = filter_var($email, FILTER_VALIDATE_EMAIL);
+				$emailFlag = filter_var($email, FILTER_VALIDATE_EMAIL); //Use php's function for checking valid emails.
 				
-				if($emailFlag){
-					$sql = "INSERT INTO users (name, surname, email) VALUES(" . 
-					$name . ", " . 
-					$surname . ", " . 
-					$email . ")";
-					echo $sql, "\n";
-				}else{
-					fwrite(STDOUT, "ERROR: The supplied email address, \"" . $email . "\", is invalid\n");
+				if($emailFlag){ //If it's a valid email then insert into table.
+					$sql = "INSERT INTO users (name, surname, email) VALUES(\"" . 
+					$name . "\", \"" . 
+					$surname . "\", \"" . 
+					$email . "\");";
+					
+					//A little check to see if everything went nicely.
+					if ($conn->query($sql) === TRUE) {
+						echo "\n" . $name . " " . $surname . "(" . $email . ") inserted successfully";
+					} else {
+						echo "\nERROR inserting into table: " . $conn->error;
+					}
+				}else{ //If email isn't valid, tell the user.
+					fwrite(STDOUT, "\nERROR: The supplied email address, \"" . $email . "\", is invalid");
 				}
 			}
 		}
-		fclose($file);
+		fclose($file); //Close the file after we are done.
 	}
 	
-	function dropTable($conn){
-		$sql = "DROP TABLE IF EXISTS `users`";
+	function dropTable($conn){ //Simple function to drop the table 'users'.
+		$sql = "DROP TABLE IF EXISTS users";
 		if ($conn->query($sql) === TRUE) {
-			echo "Table users dropped successfully";
+			echo "\nTable users dropped successfully";
 		} else {
-			echo "Error dropping table: " . $conn->error;
+			echo "\nERROR dropping table: " . $conn->error;
 		}
 	}
 	
-	function createTable($conn){
-		dropTable($conn);
+	function createTable($conn){ //Function to create a new 'users' table.
+		dropTable($conn); //If we already have one, then we have to get rid of it.
 		$sql = "CREATE TABLE users (
 				id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, 
-				firstname VARCHAR(30) NOT NULL,
-				lastname VARCHAR(30) NOT NULL,
-				email VARCHAR(50),
-				reg_date TIMESTAMP
+				name VARCHAR(30) NOT NULL,
+				surname VARCHAR(30) NOT NULL,
+				email VARCHAR(50) NOT NULL,
+				UNIQUE(email)
 				)";
 
 		if ($conn->query($sql) === TRUE) {
-			echo "Table users created successfully";
+			echo "\nTable users created successfully";
 		} else {
-			echo "Error creating table: " . $conn->error;
+			echo "\nERROR creating table: " . $conn->error;
 		}
 	}
 	
@@ -97,7 +103,7 @@
 		if($argv[$i] == "--file"){
 			echo "Getting FNAME", "\n";
 			$fname = $argv[++$i];
-			readFromFile($fname);
+			readFromFile($conn, $fname);
 		}elseif($argv[$i] == "--create_table"){
 			echo "CREATE TABLE", "\n";
 			createTable($conn);
