@@ -1,5 +1,10 @@
 <?php
-	function readFromFile($conn, $fname){ //This is my function to read from the csv file.
+	function readFromFile($conn, $fname, $dryrun){ //This is my function to read from the csv file.
+		if($dryrun){
+			fwrite(STDOUT, "\n[DRYRUN: Reading from file (\"" . $fname . "\")]");
+		}else{
+			fwrite(STDOUT, "\n[Reading from file (\"" . $fname . "\") and Inserting into DB]");
+		}
 		$file = fopen($fname,"r"); //Open the file.
 		$firstLine = true; //We don't need the first line (it's the headers).
 		while(! feof($file)){ //While we are not at the end of the file...
@@ -14,24 +19,32 @@
 				
 				$emailFlag = filter_var($email, FILTER_VALIDATE_EMAIL); //Use php's function for checking valid emails.
 				
-				if($emailFlag){ //If it's a valid email then insert into table.
-					$sql = "INSERT INTO users (name, surname, email) VALUES(\"" . 
-					$name . "\", \"" . 
-					$surname . "\", \"" . 
-					$email . "\");";
-					
-					//A little check to see if everything went nicely.
-					if ($conn->query($sql) === TRUE) {
-						echo "\n" . $name . " " . $surname . "(" . $email . ") inserted successfully";
-					} else {
-						echo "\nERROR inserting into table: " . $conn->error;
-					}
+				if($emailFlag){ //If it's a valid email...
+					if(!$dryrun){
+						insertRecord($conn, $name, $surname, $email);
+					}else{
+						fwrite(STDOUT, "\nPerson: " . $name . " " . $surname . " (" . $email . ")");
+					}					
 				}else{ //If email isn't valid, tell the user.
-					fwrite(STDOUT, "\nERROR: The supplied email address, \"" . $email . "\", is invalid");
+					fwrite(STDOUT, "\n[ERROR]: The supplied email address, \"" . $email . "\", is invalid");
 				}
 			}
 		}
 		fclose($file); //Close the file after we are done.
+	}
+	
+	function insertRecord($conn, $name, $surname, $email){
+		$sql = "INSERT INTO users (name, surname, email) VALUES(\"" . 
+				$name . "\", \"" . 
+				$surname . "\", \"" . 
+				$email . "\");";
+		
+		//A little check to see if everything goes nicely during insertion.
+		if ($conn->query($sql) === TRUE) {
+			echo "\n" . $name . " " . $surname . "(" . $email . ") inserted successfully";
+		} else {
+			echo "\n[ERROR]: Inserting into table failed: " . $conn->error;
+		}
 	}
 	
 	function dropTable($conn){ //Simple function to drop the table 'users'.
@@ -39,11 +52,12 @@
 		if ($conn->query($sql) === TRUE) {
 			echo "\nTable users dropped successfully";
 		} else {
-			echo "\nERROR dropping table: " . $conn->error;
+			echo "\n[ERROR]: Dropping table failed: " . $conn->error;
 		}
 	}
 	
 	function createTable($conn){ //Function to create a new 'users' table.
+		fwrite(STDOUT, "\n[Creating Table users]");
 		dropTable($conn); //If we already have one, then we have to get rid of it.
 		$sql = "CREATE TABLE users (
 				id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, 
@@ -56,35 +70,43 @@
 		if ($conn->query($sql) === TRUE) {
 			echo "\nTable users created successfully";
 		} else {
-			echo "\nERROR creating table: " . $conn->error;
+			echo "\n[ERROR]: Creating table failed: " . $conn->error;
 		}
 	}
 	
 	//Details for connection.
+	$conn = NULL;
 	$user = '';
 	$pass = '';
 	$host = '';
 	$db = 'test';
 	
 	//Other details
+	$passGiven = false;
+	$userGiven = false;
+	$hostGiven = false;
 	$dryrun = false;
 	$cTable = false;
 	$fileName = "";
 	
 	//Get all of our command line arguments. 
 	//Not calling functions here because of obvious ordering issues that would occur.
+	fwrite(STDOUT, "[Reading command line arguments]\n");
 	for($i = 1; $i < $argc; $i++){
 		if($argv[$i] == "-p"){
-			echo "Getting PASS", "\n";
+			echo "Password supplied", "\n";
 			$pass = $argv[++$i];
+			$passGiven = true;
 		}elseif($argv[$i] == "-h"){
-			echo "Getting HOST", "\n";
+			echo "Host supplied", "\n";
 			$host = $argv[++$i];
+			$hostGiven = true;
 		}elseif($argv[$i] == "-u"){
-			echo "Getting USER", "\n";
+			echo "User supplied", "\n";
 			$user = $argv[++$i];
+			$userGiven = true;
 		}elseif($argv[$i] == "--help"){
-			echo "SHOW HELP", "\n";
+			echo "Help needed\n\n[Help]\n";
 			echo "--file [csv file name] -> This is the name of the CSV file to be parsed.",
 					"\n--create_table -> This will cause the MySQL users table to be built (no further action).",
 					"\n--dry_run -> This will be used with the \"--file\" directive in an instance where we want to run the script but not insert into DB.",
@@ -95,40 +117,53 @@
 			echo "Dryrun is TRUE", "\n";
 			$dryrun = true;
 		}elseif($argv[$i] == "--file"){
-			echo "Getting FNAME", "\n";
+			echo "File name supplied", "\n";
 			$fileName = $argv[++$i];
 		}elseif($argv[$i] == "--create_table"){
 			echo "Create table is TRUE", "\n";
 			$cTable = true;
 		}else{
-			echo "Unknown command line argument: ", $argv[$i], "\n";
+			echo "[ERROR]: Unknown command line argument: ", $argv[$i], "\n";
 		}
 	}
 	
 	//Now that we have everything we need for a connection, let's try to connect.
-	$conn = new mysqli($host, $user, $pass, $db);
-	
-	if($conn->connect_error) {
-			die("Connection failed: " . $conn->connect_error);
-	}
-	
-	//Now the appropriate functions will be called as we have a connection.
-	if($cTable){
-		createTable($conn);
-	}
-	
-	if($fileName != ""){
-		readFromFile($conn, $fileName);
-	}
-	
-	if($dryrun){
-		if($fileName != ""){
-			echo "\ndryrun";
+	if(!$dryrun){ //We only make a connection to the DB when we are not on a dry run.
+		fwrite(STDOUT, "\n[Connecting to DB]");
+		if($passGiven && $userGiven && $hostGiven) { //If all details are given...
+			$conn = new mysqli($host, $user, $pass, $db); //Try to make the connection.
+		
+			if($conn->connect_error) { //If it doesn't work, spit out the error and kill the program.
+				die("\n[ERROR]: Connection failed: " . $conn->connect_error);
+			}else{
+				fwrite(STDOUT, "\nConnection successful");
+			}
 		}else{
-			echo "\nERROR: Dryrun is TRUE but no file name given.";
+			fwrite(STDOUT, "\n[ERROR]: To make a connection, the user(-u), the password(-p) and the host(-h) need to be supplied");
 		}
 	}
 	
-	$conn->close();
+	//Now the appropriate functions will be called.
+	if($cTable && $conn != "" && !$dryrun){ //If we have a connection, and we need to create a table...
+		createTable($conn); //Create the table.
+	}else if($cTable && $conn != "" && $dryrun){
+		fwrite(STDOUT, "\n[ERROR]: Cannot alter the Database on a dry run (--dry_run)");
+	}
+	
+	if($fileName != "" && !$cTable  && $conn != "" && !$dryrun){
+		readFromFile($conn, $fileName, $dryrun);
+	}
+	
+	if($dryrun && !$cTable  && $conn == ""){
+		if($fileName != ""){
+			readFromFile($conn, $fileName, $dryrun);
+		}else{
+			fwrite(STDOUT, "\n[ERROR]: Dry run(--dry_run) is TRUE but no file name(--file) given.");	
+		}
+	}
+	
+	if($conn != ""){
+		$conn->close();
+	}
 
 ?>
