@@ -1,6 +1,5 @@
 <?php
-	//This is my fucntion to read from the csv file.
-	function readFromFile($conn, $fname){
+	function readFromFile($conn, $fname){ //This is my function to read from the csv file.
 		$file = fopen($fname,"r"); //Open the file.
 		$firstLine = true; //We don't need the first line (it's the headers).
 		while(! feof($file)){ //While we are not at the end of the file...
@@ -67,8 +66,13 @@
 	$host = '';
 	$db = 'test';
 	
-	//Get connections details from arguments / arguments that do not need a connection.	
-	//The other arguments all require the use of a connection, so we need to make sure we get these first.
+	//Other details
+	$dryrun = false;
+	$cTable = false;
+	$fileName = "";
+	
+	//Get all of our command line arguments. 
+	//Not calling functions here because of obvious ordering issues that would occur.
 	for($i = 1; $i < $argc; $i++){
 		if($argv[$i] == "-p"){
 			echo "Getting PASS", "\n";
@@ -76,8 +80,6 @@
 		}elseif($argv[$i] == "-h"){
 			echo "Getting HOST", "\n";
 			$host = $argv[++$i];
-		}elseif($argv[$i] == "--dry_run"){
-			echo "DRY RUN", "\n";
 		}elseif($argv[$i] == "-u"){
 			echo "Getting USER", "\n";
 			$user = $argv[++$i];
@@ -89,6 +91,17 @@
 					"\n-u [username] -> Sets the MySQL username to be used.",
 					"\n-p [password] -> Sets the MySQL password to be used.",
 					"\n-h [host] -> Sets the MySQL host to be used.";
+		}elseif($argv[$i] == "--dry_run"){
+			echo "Dryrun is TRUE", "\n";
+			$dryrun = true;
+		}elseif($argv[$i] == "--file"){
+			echo "Getting FNAME", "\n";
+			$fileName = $argv[++$i];
+		}elseif($argv[$i] == "--create_table"){
+			echo "Create table is TRUE", "\n";
+			$cTable = true;
+		}else{
+			echo "Unknown command line argument: ", $argv[$i], "\n";
 		}
 	}
 	
@@ -99,17 +112,21 @@
 			die("Connection failed: " . $conn->connect_error);
 	}
 	
-	for($i = 1; $i < $argc; $i++){
-		if($argv[$i] == "--file"){
-			echo "Getting FNAME", "\n";
-			$fname = $argv[++$i];
-			readFromFile($conn, $fname);
-		}elseif($argv[$i] == "--create_table"){
-			echo "CREATE TABLE", "\n";
-			createTable($conn);
-		}//else{
-			//echo "Unknown command line argument: ", $argv[$i], "\n";
-		//}
+	//Now the appropriate functions will be called as we have a connection.
+	if($cTable){
+		createTable($conn);
+	}
+	
+	if($fileName != ""){
+		readFromFile($conn, $fileName);
+	}
+	
+	if($dryrun){
+		if($fileName != ""){
+			echo "\ndryrun";
+		}else{
+			echo "\nERROR: Dryrun is TRUE but no file name given.";
+		}
 	}
 	
 	$conn->close();
