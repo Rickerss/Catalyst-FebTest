@@ -1,4 +1,7 @@
 <?php
+	
+	//Code is by Rick Epworth(epworth.rick@gmail.com). Feb 10 2016
+
 	function readFromFile($conn, $fname, $dryrun){ //This is my function to read from the csv file.
 		if($dryrun){
 			fwrite(STDOUT, "\n[DRYRUN: Reading from file (\"" . $fname . "\")]");
@@ -49,9 +52,9 @@
 		
 		//A little check to see if everything goes nicely during insertion.
 		if ($conn->query($sql) === TRUE) {
-			echo "\n" . $name . " " . $surname . "(" . $email . ") inserted successfully";
+			fwrite(STDOUT, "\n" . $name . " " . $surname . "(" . $email . ") inserted successfully");
 		} else {
-			echo "\n[ERROR]: Inserting into table failed: " . $conn->error;
+			fwrite(STDOUT, "\n[ERROR]: Inserting into table failed: " . $conn->error);
 		}
 	}
 	
@@ -60,9 +63,9 @@
 		
 		//A little check to see if everything goes nicely during dropping the table.
 		if ($conn->query($sql) === TRUE) {
-			echo "\nTable users dropped successfully";
+			fwrite(STDOUT, "\nTable users dropped successfully");
 		} else {
-			echo "\n[ERROR]: Dropping table failed: " . $conn->error;
+			fwrite(STDOUT, "\n[ERROR]: Dropping table failed: " . $conn->error);
 		}
 	}
 	
@@ -79,9 +82,9 @@
 		
 		//A little check to see if everything goes nicely during creation of table.
 		if ($conn->query($sql) === TRUE) {
-			echo "\nTable users created successfully";
+			fwrite(STDOUT, "\nTable users created successfully");
 		} else {
-			echo "\n[ERROR]: Creating table failed: " . $conn->error;
+			fwrite(STDOUT, "\n[ERROR]: Creating table failed: " . $conn->error);
 		}
 	}
 	
@@ -90,7 +93,7 @@
 	$user = '';
 	$pass = '';
 	$host = '';
-	$db = 'test';
+	$db = 'test'; //Change this to the database to be used.
 	
 	//Other details
 	$passGiven = false;
@@ -105,36 +108,36 @@
 	fwrite(STDOUT, "[Reading command line arguments]\n");
 	for($i = 1; $i < $argc; $i++){
 		if($argv[$i] == "-p"){
-			echo "Password supplied", "\n";
+			fwrite(STDOUT, "Password supplied\n");
 			$pass = $argv[++$i];
 			$passGiven = true;
 		}elseif($argv[$i] == "-h"){
-			echo "Host supplied", "\n";
+			fwrite(STDOUT, "Host supplied\n");
 			$host = $argv[++$i];
 			$hostGiven = true;
 		}elseif($argv[$i] == "-u"){
-			echo "User supplied", "\n";
+			fwrite(STDOUT, "User supplied\n");
 			$user = $argv[++$i];
 			$userGiven = true;
 		}elseif($argv[$i] == "--help"){
-			echo "Help needed\n\n[Help]\n";
-			echo "--file [csv file name] -> This is the name of the CSV file to be parsed.",
-					"\n--create_table -> This will cause the MySQL users table to be built (no further action).",
-					"\n--dry_run -> This will be used with the \"--file\" directive in an instance where we want to run the script but not insert into DB.",
-					"\n-u [username] -> Sets the MySQL username to be used.",
-					"\n-p [password] -> Sets the MySQL password to be used.",
-					"\n-h [host] -> Sets the MySQL host to be used.";
+			fwrite(STDOUT, "Help needed\n\n[Help]\n");
+			fwrite(STDOUT, "--file [csv file name] -> This is the name of the CSV file to be parsed." .
+					"\n--create_table -> This will cause the MySQL users table to be built (no further action)." .
+					"\n--dry_run -> This will be used with the \"--file\" directive in an instance where we want to run the script but not insert into DB." .
+					"\n-u [username] -> Sets the MySQL username to be used." .
+					"\n-p [password] -> Sets the MySQL password to be used." .
+					"\n-h [host] -> Sets the MySQL host to be used.");
 		}elseif($argv[$i] == "--dry_run"){
-			echo "Dryrun is TRUE", "\n";
+			fwrite(STDOUT, "Dryrun is TRUE\n");
 			$dryrun = true;
 		}elseif($argv[$i] == "--file"){
-			echo "File name supplied", "\n";
+			fwrite(STDOUT, "File name supplied\n");
 			$fileName = $argv[++$i];
 		}elseif($argv[$i] == "--create_table"){
-			echo "Create table is TRUE", "\n";
+			fwrite(STDOUT, "Create table is TRUE\n");
 			$cTable = true;
 		}else{
-			echo "[ERROR]: Unknown command line argument: ", $argv[$i], "\n";
+			fwrite(STDOUT, "[ERROR]: Unknown command line argument: " . $argv[$i] . "\n");
 		}
 	}
 	
@@ -181,5 +184,8 @@
 	if($conn != ""){
 		$conn->close();
 	}
+	
+	//Linux and Windows differ (Windows automatically puts a \n whereas Linux does not).
+	fwrite(STDOUT, "\n");
 
 ?>
