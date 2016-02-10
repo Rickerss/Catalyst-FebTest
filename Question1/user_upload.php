@@ -20,8 +20,8 @@
 				$emailFlag = filter_var($email, FILTER_VALIDATE_EMAIL); //Use php's function for checking valid emails.
 				
 				if($emailFlag){ //If it's a valid email...
-					if(!$dryrun){
-						insertRecord($conn, $name, $surname, $email);
+					if(!$dryrun){ //If we are not on a dry run, we have access to the DB.
+						insertRecord($conn, $name, $surname, $email); //Call function to insert.
 					}else{
 						fwrite(STDOUT, "\nPerson: " . $name . " " . $surname . " (" . $email . ")");
 					}					
@@ -33,13 +33,15 @@
 		fclose($file); //Close the file after we are done.
 	}
 	
-	function cleanString($string){
+	function cleanString($string){ //Used to clean name strings..
 		$string = preg_replace('/[^a-zA-Z0-9-\']/', '', $string); //Replace special characters. (Except - and ').
+		$string = preg_replace('/[0-9]+/', '', $string); //Replace numbers (names don't have numbers).
 		$string = ucfirst(trim(strtolower($string))); //Put the string to lower case, then trim white space and put the first letter to upper case.
+
 		return $string; //Return the cleaned string.
 	}
 	
-	function insertRecord($conn, $name, $surname, $email){
+	function insertRecord($conn, $name, $surname, $email){ //Used to insert a record into the DB.
 		$sql = "INSERT INTO users (name, surname, email) VALUES(\"" . 
 				$name . "\", \"" . 
 				$surname . "\", \"" . 
@@ -55,6 +57,8 @@
 	
 	function dropTable($conn){ //Simple function to drop the table 'users'.
 		$sql = "DROP TABLE IF EXISTS users";
+		
+		//A little check to see if everything goes nicely during dropping the table.
 		if ($conn->query($sql) === TRUE) {
 			echo "\nTable users dropped successfully";
 		} else {
@@ -72,7 +76,8 @@
 				email VARCHAR(50) NOT NULL,
 				UNIQUE(email)
 				)";
-
+		
+		//A little check to see if everything goes nicely during creation of table.
 		if ($conn->query($sql) === TRUE) {
 			echo "\nTable users created successfully";
 		} else {
@@ -133,7 +138,7 @@
 		}
 	}
 	
-	//Now that we have everything we need for a connection, let's try to connect.
+	//Now that we SHOULD have everything we need for a connection, let's try to connect.
 	if(!$dryrun){ //We only make a connection to the DB when we are not on a dry run.
 		fwrite(STDOUT, "\n[Connecting to DB]");
 		if($passGiven && $userGiven && $hostGiven) { //If all details are given...
@@ -142,7 +147,7 @@
 			if($conn->connect_error) { //If it doesn't work, spit out the error and kill the program.
 				die("\n[ERROR]: Connection failed: " . $conn->connect_error);
 			}else{
-				fwrite(STDOUT, "\nConnection successful");
+				fwrite(STDOUT, "\nConnection successful\n");
 			}
 		}else{
 			fwrite(STDOUT, "\n[ERROR]: To make a connection, the user(-u), the password(-p) and the host(-h) need to be supplied");
@@ -150,16 +155,20 @@
 	}
 	
 	//Now the appropriate functions will be called.
+	
+	//Create a Table.
 	if($cTable && $conn != "" && !$dryrun){ //If we have a connection, and we need to create a table...
 		createTable($conn); //Create the table.
-	}else if($cTable && $conn != "" && $dryrun){
+	}else if($cTable && $conn == "" && $dryrun){ //If we're on a dry run we cannot make a table.
 		fwrite(STDOUT, "\n[ERROR]: Cannot alter the Database on a dry run (--dry_run)");
 	}
 	
+	//Read in and insert into DB.
 	if($fileName != "" && !$cTable  && $conn != "" && !$dryrun){
 		readFromFile($conn, $fileName, $dryrun);
 	}
 	
+	//Read in and display details.
 	if($dryrun && !$cTable  && $conn == ""){
 		if($fileName != ""){
 			readFromFile($conn, $fileName, $dryrun);
@@ -168,6 +177,7 @@
 		}
 	}
 	
+	//Close the connection if we have one.
 	if($conn != ""){
 		$conn->close();
 	}
